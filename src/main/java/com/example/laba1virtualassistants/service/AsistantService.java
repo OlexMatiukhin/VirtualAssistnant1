@@ -1,13 +1,16 @@
 package com.example.laba1virtualassistants.service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-
-import dto.GeoResponseDTO;
-import dto.WeatherDTO;
-import dto.WeatherOpenAPIResponse;
+import com.example.laba1virtualassistants.dto.GeoResponseDTO;
+import com.example.laba1virtualassistants.dto.WeatherDTO;
+import com.example.laba1virtualassistants.dto.WeatherOpenAPIResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 
@@ -23,7 +26,7 @@ public class AsistantService {
     private String units;
     @Value ("${openweather.lang:ua}")
     private String lang;
-
+    private static final Logger log = LoggerFactory.getLogger(AsistantService.class);
     public AsistantService(RestClient.Builder resclientBuilder, @Value ("${openweather.base-url}") String baseUrl)
     {
         this.restClient = resclientBuilder.baseUrl(baseUrl).build();
@@ -38,13 +41,14 @@ public class AsistantService {
                 .build())
                 .retrieve()
                 .body(GeoResponseDTO[].class);
-        if (geo.length==0 || geo==null){
+        if ( geo==null || geo.length==0 ){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Місто не знайдено: " + city);
         }
         GeoResponseDTO location = geo[0];
         System.out.println(location);
         return location;
     }
+
 
     public WeatherOpenAPIResponse getWeatherByGeo(GeoResponseDTO geo){
         WeatherOpenAPIResponse weather= restClient.get().uri(uriBuilder -> uriBuilder
@@ -56,7 +60,15 @@ public class AsistantService {
             return weather;
     }
 
+
+    @Cacheable(cacheNames = "weatherDtoByCity",
+            key = "#city.trim().toLowerCase()",
+            unless = "#result == null"
+    )
     public WeatherDTO getWeatherByCity(String city){
+        try{
+
+
         GeoResponseDTO geo = getGeoByCity(city);
         WeatherOpenAPIResponse weatherResponse = getWeatherByGeo(geo);
         String main = null;
@@ -75,7 +87,27 @@ public class AsistantService {
                 description,
                 weatherResponse.sys() != null ? weatherResponse.sys().country() : null
         );
+
+
         return weather;
+        } catch (ResponseStatusException e) {
+            throw e;
+        }
+        catch (RestClientException e){
+            log.error("OpenWeather Api недоступне для міста '{}': {}",
+                    city, e.getMessage(),e);
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Сервіс погоди тимчасово недоступний. Спробуйте пізніше"
+            );
+        } catch (Exception e) {
+            log.error("Внутрішня помилка при отриманні погоди для '{}': {}", city, e.getMessage(),e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Внутрішня помилка сервера"
+            );
+        }
     }
+
 
 }

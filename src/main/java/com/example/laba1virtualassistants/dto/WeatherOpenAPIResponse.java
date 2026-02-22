@@ -1,4 +1,4 @@
-package dto;
+package com.example.laba1virtualassistants.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

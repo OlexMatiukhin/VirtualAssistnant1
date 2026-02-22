@@ -1,9 +1,7 @@
 package com.example.laba1virtualassistants.controller;
 
 import com.example.laba1virtualassistants.service.AsistantService;
-import dto.GeoResponseDTO;
-import dto.WeatherDTO;
-import dto.WeatherOpenAPIResponse;
+import com.example.laba1virtualassistants.dto.WeatherDTO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;

@@ -1,4 +1,4 @@
-package dto;
+package com.example.laba1virtualassistants.dto;
 
 
 public record GeoResponseDTO( String name,
